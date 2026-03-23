@@ -2,6 +2,8 @@ import { randomBytes } from 'node:crypto'
 import { type Context, h, type Session } from 'koishi'
 import type { BiliApiClient } from './api'
 import type { AuthManager } from './auth'
+import { dynamicItemToNotification } from './converters'
+import type { MessageFormatter } from './formatter'
 import type { Config } from './index'
 
 // ─── 鉴权辅助 ─────────────────────────────────────────────────────────────────
@@ -41,7 +43,7 @@ const ALL_TYPES = 'live,dynamic,video'
 
 // ─── 指令注册 ─────────────────────────────────────────────────────────────────
 
-export function registerCommands(ctx: Context, _config: Config, api: BiliApiClient, auth: AuthManager) {
+export function registerCommands(ctx: Context, _config: Config, api: BiliApiClient, auth: AuthManager, formatter: MessageFormatter) {
   const bili = ctx.command('bili', 'B站 UP主 推送插件')
 
   // ── bili admin（主人专属） ────────────────────────────────────────────────
@@ -174,14 +176,9 @@ export function registerCommands(ctx: Context, _config: Config, api: BiliApiClie
       try {
         const { items } = await api.getUserDynamics(targetUid)
         if (!items.length) return '该 UP主 暂无动态'
-        const item = items[0]
-        const author = item.modules?.module_author
-        const dynamic = item.modules?.module_dynamic
-        const text = dynamic?.desc?.text ?? ''
-        return h.text(
-          `[预览] ${author?.name ?? targetUid} 的最新动态：\n${text}\n` +
-          `https://t.bilibili.com/${item.id_str}`,
-        ).toString()
+        const notification = dynamicItemToNotification(items[0])
+        const elements = formatter.format(notification)
+        await session.send(elements)
       } catch (err) {
         return `获取动态失败：${String(err)}`
       }

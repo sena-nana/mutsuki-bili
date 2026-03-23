@@ -9,6 +9,7 @@ import type {
   DynamicItem,
   LiveRoomInfo,
   UserInfo,
+  VideoDetail,
   VideoItem,
 } from './types'
 
@@ -149,5 +150,57 @@ export class BiliApiClient {
       true,  // WBI signed
     )
     return data?.list?.vlist ?? []
+  }
+
+  /** 通过 BV 号获取视频详情 */
+  async getVideoByBvid(bvid: string): Promise<VideoDetail> {
+    return this.request<VideoDetail>(
+      'https://api.bilibili.com/x/web-interface/view',
+      { bvid },
+    )
+  }
+
+  /** 通过 av 号获取视频详情 */
+  async getVideoByAvid(aid: string): Promise<VideoDetail> {
+    return this.request<VideoDetail>(
+      'https://api.bilibili.com/x/web-interface/view',
+      { aid },
+    )
+  }
+
+  /** 获取单条动态详情 */
+  async getDynamicDetail(dynamicId: string): Promise<DynamicItem> {
+    const data = await this.request<{ item: DynamicItem }>(
+      'https://api.bilibili.com/x/polymer/web-dynamic/v1/detail',
+      { id: dynamicId },
+    )
+    return data.item
+  }
+
+  /** 解析 b23.tv 短链接，返回重定向后的实际 URL */
+  async resolveShortLink(code: string): Promise<string> {
+    try {
+      // 尝试 HEAD 请求获取重定向 Location
+      await this.ctx.http.head('https://b23.tv/' + code, {
+        redirect: 'manual',
+        headers: COMMON_HEADERS,
+      })
+    } catch (err: any) {
+      // redirect:manual 下 3xx 会抛出错误，从中提取 Location
+      const location = err?.response?.headers?.location
+        ?? err?.response?.headers?.get?.('location')
+      if (location) return location
+    }
+    // 回退：GET 请求，解析响应体中的跳转 URL
+    try {
+      const html = await this.ctx.http.get<string>('https://b23.tv/' + code, {
+        headers: COMMON_HEADERS,
+        responseType: 'text',
+      })
+      const match = html.match(/content="0;url=(https?:\/\/[^"]+)"/)
+        ?? html.match(/window\.location\.href\s*=\s*"(https?:\/\/[^"]+)"/)
+      if (match?.[1]) return match[1]
+    } catch {}
+    return ''
   }
 }

@@ -1,5 +1,12 @@
 import { h } from 'koishi'
-import type { AnyNotification, DynamicNotification, LiveNotification, VideoNotification } from './types'
+import type {
+  AnyNotification,
+  DynamicNotification,
+  LiveInfoNotification,
+  LiveNotification,
+  UserNotification,
+  VideoNotification,
+} from './types'
 
 export class MessageFormatter {
   format(notification: AnyNotification): h[] {
@@ -8,6 +15,8 @@ export class MessageFormatter {
       case 'live_end':   return this.formatLiveEnd(notification)
       case 'dynamic':    return this.formatDynamic(notification)
       case 'video':      return this.formatVideo(notification)
+      case 'user':       return this.formatUser(notification)
+      case 'live_info':  return this.formatLiveInfo(notification)
     }
   }
 
@@ -60,6 +69,31 @@ export class MessageFormatter {
       `\n【投稿】${n.userName}\n` +
       `${n.title}\n` +
       `https://www.bilibili.com/video/${n.bvid}`,
+    ))
+    return elements
+  }
+
+  private formatUser(n: UserNotification): h[] {
+    const elements: h[] = []
+    if (n.faceUrl) elements.push(h.image(n.faceUrl))
+    let text = `\n【UP主】${n.userName}\n`
+    if (n.sign) text += `签名：${n.sign}\n`
+    text += `https://space.bilibili.com/${n.uid}`
+    if (n.liveRoomUrl) {
+      text += `\n直播间：${n.liveRoomUrl}（${n.liveStatus ?? '未知'}）`
+    }
+    elements.push(h.text(text))
+    return elements
+  }
+
+  private formatLiveInfo(n: LiveInfoNotification): h[] {
+    const elements: h[] = []
+    if (n.coverUrl) elements.push(h.image(n.coverUrl))
+    elements.push(h.text(
+      `\n【直播间】${n.title}\n` +
+      `状态：${n.status}\n` +
+      `分区：${n.areaName}\n` +
+      `https://live.bilibili.com/${n.roomId}`,
     ))
     return elements
   }

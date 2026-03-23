@@ -129,7 +129,7 @@ export interface DynamicItem {
         }
       }
     }
-    module_author?: { name: string; face: string; pub_ts: number }
+    module_author?: { name: string; face: string; pub_ts: number; mid?: number }
   }
 }
 
@@ -144,6 +144,17 @@ export interface VideoItem {
   title: string
   pic: string
   desc: string
+  pubdate: number
+}
+
+/** /x/web-interface/view 返回的完整视频信息 */
+export interface VideoDetail {
+  bvid: string
+  aid: number
+  title: string
+  pic: string
+  desc: string
+  owner: { mid: number; name: string; face: string }
   pubdate: number
 }
 
@@ -191,4 +202,25 @@ export interface VideoNotification {
   pubDate: Date
 }
 
-export type AnyNotification = LiveNotification | DynamicNotification | VideoNotification
+export interface UserNotification {
+  type: 'user'
+  uid: string
+  userName: string
+  faceUrl: string
+  sign: string
+  liveRoomUrl?: string
+  liveStatus?: string
+}
+
+export interface LiveInfoNotification {
+  type: 'live_info'
+  roomId: string
+  title: string
+  coverUrl: string
+  areaName: string
+  status: '直播中' | '轮播中' | '未开播'
+}
+
+export type AnyNotification =
+  | LiveNotification | DynamicNotification | VideoNotification
+  | UserNotification | LiveInfoNotification

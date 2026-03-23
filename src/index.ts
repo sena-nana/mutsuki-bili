@@ -6,6 +6,7 @@ import { registerConsole } from './console'
 import { registerModels } from './db'
 import { DynamicScraper } from './dynamic-scraper'
 import { MessageFormatter } from './formatter'
+import { registerLinkParser } from './link-parser'
 import { PollerManager } from './poller'
 import type { AdminEntry } from './types'
 
@@ -34,6 +35,8 @@ export interface Config {
   rateLimitBackoff: number
   puppeteerFallback: boolean
   puppeteerTimeout: number
+  linkParsing: boolean
+  linkCooldown: number
 }
 
 export const Config: Schema<Config> = Schema.object({
@@ -62,6 +65,9 @@ export const Config: Schema<Config> = Schema.object({
 
   puppeteerFallback: Schema.boolean().default(true).description('API 触发风控(352)时是否使用浏览器回退获取动态'),
   puppeteerTimeout: Schema.natural().role('ms').default(30 * Time.second).description('浏览器回退的页面加载超时时间'),
+
+  linkParsing: Schema.boolean().default(true).description('是否开启聊天消息中的 B 站链接自动解析'),
+  linkCooldown: Schema.natural().role('ms').default(Time.minute).description('同一链接在同一频道的解析冷却时间'),
 })
 
 // ─── Plugin Entry ─────────────────────────────────────────────────────────────
@@ -82,8 +88,9 @@ export function apply(ctx: Context, config: Config) {
     logger.info('mutsuki-bili 已启动')
   })
 
-  registerCommands(ctx, config, api, auth)
+  registerCommands(ctx, config, api, auth, formatter)
   registerConsole(ctx, config, auth)
+  registerLinkParser(ctx, config, api, formatter)
 }
 
 async function syncAdminsFromConfig(ctx: Context, config: Config) {

@@ -1,5 +1,6 @@
 import { type Context, Logger } from 'koishi'
 import { type BiliApiClient, BiliApiError, RateLimitError, RiskControlError } from './api'
+import { dynamicItemToNotification, liveToNotification, videoItemToNotification } from './converters'
 import type { MessageFormatter } from './formatter'
 import type { Config } from './index'
 import type { AnyNotification, BiliLiveState, DynamicItem } from './types'
@@ -145,29 +146,13 @@ export class PollerManager {
     await this.ctx.database.upsert('bili.live_state', [newState])
 
     if (isLive && !wasLive) {
-      await this.dispatch(uid, 'live', {
-        type: 'live_start',
-        uid,
-        userName: userInfo.name,
-        faceUrl: userInfo.face,
-        title: liveInfo.title,
-        coverUrl: liveInfo.keyframe,
-        areaName: liveInfo.area_name,
-        roomId,
-        startedAt: newState.startedAt,
-      })
+      const user = { name: userInfo.name, face: userInfo.face, uid }
+      await this.dispatch(uid, 'live', liveToNotification(liveInfo, user, 'live_start', roomId, newState.startedAt))
     } else if (!isLive && wasLive) {
-      await this.dispatch(uid, 'live', {
-        type: 'live_end',
-        uid,
-        userName: userInfo.name,
-        faceUrl: userInfo.face,
-        title: cached?.title ?? '',
-        coverUrl: cached?.coverUrl ?? '',
-        areaName: cached?.areaName ?? '',
-        roomId,
-        startedAt: cached?.startedAt ?? now,
-      })
+      // 下播时使用缓存的直播信息
+      const user = { name: userInfo.name, face: userInfo.face, uid }
+      const endInfo = { ...liveInfo, title: cached?.title ?? '', keyframe: cached?.coverUrl ?? '', area_name: cached?.areaName ?? '' }
+      await this.dispatch(uid, 'live', liveToNotification(endInfo, user, 'live_end', roomId, cached?.startedAt ?? now))
     }
   }
 
@@ -208,25 +193,7 @@ export class PollerManager {
     if (!newItems.length) return
 
     for (const item of newItems.reverse()) {
-      const author = item.modules?.module_author
-      const dynamic = item.modules?.module_dynamic
-      const text = dynamic?.desc?.text ?? ''
-      const images: string[] = dynamic?.major?.draw?.items?.map(i => i.src) ?? []
-      const archive = dynamic?.major?.archive
-      const opus = dynamic?.major?.opus
-
-      await this.dispatch(uid, 'dynamic', {
-        type: 'dynamic',
-        uid,
-        userName: author?.name ?? uid,
-        faceUrl: author?.face ?? '',
-        dynamicId: item.id_str,
-        text: opus?.summary?.text ?? text,
-        images: opus?.pics?.map(p => p.url) ?? images,
-        videoLink: archive ? `https:${archive.jump_url}` : undefined,
-        videoThumb: archive?.cover,
-        videoTitle: archive?.title,
-      })
+      await this.dispatch(uid, 'dynamic', dynamicItemToNotification(item))
     }
 
     await this.ctx.database.upsert('bili.dynamic_state', [{
@@ -267,16 +234,7 @@ export class PollerManager {
 
     for (const video of newVideos.reverse()) {
       const [userCached] = await this.ctx.database.get('bili.user', { uid })
-      await this.dispatch(uid, 'video', {
-        type: 'video',
-        uid,
-        userName: userCached?.name ?? uid,
-        bvid: video.bvid,
-        title: video.title,
-        thumb: video.pic,
-        desc: video.desc,
-        pubDate: new Date(video.pubdate * 1000),
-      })
+      await this.dispatch(uid, 'video', videoItemToNotification(video, userCached?.name ?? uid, uid))
     }
 
     await this.ctx.database.upsert('bili.video_state', [{
