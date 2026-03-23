@@ -14,7 +14,27 @@
     "koishi",
     "plugin"
   ],
+  "koishi": {
+    "browser": true,
+    "public": [
+      "dist"
+    ],
+    "service": {
+      "optional": [
+        "console"
+      ]
+    }
+  },
   "peerDependencies": {
+    "@koishijs/plugin-console": "^5.30.0",
     "koishi": "^4.18.7"
+  },
+  "peerDependenciesMeta": {
+    "@koishijs/plugin-console": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@koishijs/client": "^5.30.0"
   }
 }
