@@ -1,6 +1,7 @@
-import { Context, HTTP } from 'koishi'
+import { Context, HTTP, Logger } from 'koishi'
 import type { AuthManager } from './auth'
 import { COMMON_HEADERS } from './auth'
+import type { DynamicScraper } from './dynamic-scraper'
 import type { Config } from './index'
 import type {
   BiliApiResponse,
@@ -10,6 +11,8 @@ import type {
   UserInfo,
   VideoItem,
 } from './types'
+
+const logger = new Logger('mutsuki-bili/api')
 
 // ─── 错误类型 ─────────────────────────────────────────────────────────────────
 
@@ -30,6 +33,13 @@ export class BiliApiError extends Error {
   }
 }
 
+export class RiskControlError extends BiliApiError {
+  constructor(message: string) {
+    super(352, message)
+    this.name = 'RiskControlError'
+  }
+}
+
 // ─── API 客户端 ───────────────────────────────────────────────────────────────
 
 export class BiliApiClient {
@@ -39,6 +49,7 @@ export class BiliApiClient {
     private ctx: Context,
     private auth: AuthManager,
     private config: Config,
+    private scraper?: DynamicScraper,
   ) {
     this.http = ctx.http.extend({ headers: COMMON_HEADERS })
   }
@@ -66,6 +77,9 @@ export class BiliApiClient {
     }
 
     // Bilibili 业务错误码
+    if (resp.code === 352) {
+      throw new RiskControlError(resp.message)
+    }
     if (resp.code !== 0) {
       // -101: 未登录, -111: csrf校验失败 → 可能 cookie 过期
       throw new BiliApiError(resp.code, resp.message)
@@ -93,8 +107,22 @@ export class BiliApiClient {
   /**
    * 获取 UP主 动态列表。
    * offset 为空时获取最新一页；有 offset 时获取该 offset 之后的内容。
+   * 当 API 触发风控(352) 且 puppeteer 可用时，自动回退到浏览器获取。
    */
   async getUserDynamics(uid: string, offset = ''): Promise<{ items: DynamicItem[]; offset: string; hasMore: boolean }> {
+    try {
+      return await this.fetchDynamicsViaApi(uid, offset)
+    } catch (err) {
+      if (err instanceof RiskControlError && this.scraper?.available) {
+        logger.warn('动态 API 触发风控(352)，尝试浏览器回退 uid=%s', uid)
+        const result = await this.scraper.scrapeUserDynamics(uid)
+        if (result) return result
+      }
+      throw err
+    }
+  }
+
+  private async fetchDynamicsViaApi(uid: string, offset: string) {
     const params: Record<string, string | number> = {
       host_mid: uid,
       platform: 'web',

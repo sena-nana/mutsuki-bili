@@ -4,6 +4,7 @@ import { AuthManager } from './auth'
 import { registerCommands } from './commands'
 import { registerConsole } from './console'
 import { registerModels } from './db'
+import { DynamicScraper } from './dynamic-scraper'
 import { MessageFormatter } from './formatter'
 import { PollerManager } from './poller'
 import type { AdminEntry } from './types'
@@ -12,7 +13,7 @@ export const name = 'mutsuki-bili'
 
 export const inject = {
   required: ['database', 'http'],
-  optional: ['console'],
+  optional: ['console', 'puppeteer'],
 }
 
 const logger = new Logger('mutsuki-bili')
@@ -31,6 +32,8 @@ export interface Config {
   maxRetries: number
   backoffFactor: number
   rateLimitBackoff: number
+  puppeteerFallback: boolean
+  puppeteerTimeout: number
 }
 
 export const Config: Schema<Config> = Schema.object({
@@ -56,6 +59,9 @@ export const Config: Schema<Config> = Schema.object({
   maxRetries: Schema.natural().default(3).description('单次请求最大重试次数'),
   backoffFactor: Schema.number().default(2).description('退避系数'),
   rateLimitBackoff: Schema.natural().role('ms').default(5 * Time.minute).description('触发限速后的等待时间'),
+
+  puppeteerFallback: Schema.boolean().default(true).description('API 触发风控(352)时是否使用浏览器回退获取动态'),
+  puppeteerTimeout: Schema.natural().role('ms').default(30 * Time.second).description('浏览器回退的页面加载超时时间'),
 })
 
 // ─── Plugin Entry ─────────────────────────────────────────────────────────────
@@ -64,7 +70,8 @@ export function apply(ctx: Context, config: Config) {
   registerModels(ctx)
 
   const auth      = new AuthManager(ctx, config)
-  const api       = new BiliApiClient(ctx, auth, config)
+  const scraper   = new DynamicScraper(ctx, auth, config)
+  const api       = new BiliApiClient(ctx, auth, config, scraper)
   const formatter = new MessageFormatter()
   const poller    = new PollerManager(ctx, config, api, formatter)
 

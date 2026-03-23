@@ -1,5 +1,5 @@
 import { type Context, Logger } from 'koishi'
-import { type BiliApiClient, BiliApiError, RateLimitError } from './api'
+import { type BiliApiClient, BiliApiError, RateLimitError, RiskControlError } from './api'
 import type { MessageFormatter } from './formatter'
 import type { Config } from './index'
 import type { AnyNotification, BiliLiveState, DynamicItem } from './types'
@@ -38,6 +38,11 @@ export class PollerManager {
           logger.warn('触发限速，等待 %ds', this.config.rateLimitBackoff / 1000)
           await sleep(this.config.rateLimitBackoff)
           continue
+        }
+        if (err instanceof RiskControlError) {
+          // 352 风控：回退已在 api.getUserDynamics 中尝试过，此处不重试
+          logger.warn('触发风控(352)且浏览器回退不可用/失败')
+          return null
         }
         if (err instanceof BiliApiError && (err.code === -101 || err.code === -111)) {
           logger.warn('Cookie 可能已过期 (code=%d)，请重新登录', err.code)
