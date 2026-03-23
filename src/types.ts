@@ -1,3 +1,13 @@
+// ─── 常量 & 枚举 ──────────────────────────────────────────────────────────────
+
+export const enum LiveStatus {
+  OFFLINE = 0,
+  LIVE = 1,
+  REPLAY = 2,
+}
+
+export const BOT_STATUS_ONLINE = 3
+
 // ─── DB Row Types ────────────────────────────────────────────────────────────
 
 export interface BiliAdmin {
@@ -55,6 +65,10 @@ export interface BiliBinding {
 }
 
 declare module 'koishi' {
+  interface User {
+    id: number
+    authority: number
+  }
   interface Tables {
     'bili.admin': BiliAdmin
     'bili.user': BiliUser

@@ -1,7 +1,9 @@
-import { Context } from 'koishi'
+import { Context, Logger } from 'koishi'
 import { createHash } from 'node:crypto'
 import type { Config } from './index'
 import type { WbiKeys } from './types'
+
+const logger = new Logger('mutsuki-bili/auth')
 
 // WBI 混合密钥索引表（反向工程自 Bilibili，版本敏感，变动时参考 koishi-plugin-bilibili-notify）
 const WBI_INDEX_TABLE = [
@@ -25,11 +27,11 @@ export class AuthManager {
   async buildCookieHeader(): Promise<string> {
     const parts: string[] = []
 
-    if (this.config.sessdata) {
-      parts.push(`SESSDATA=${this.config.sessdata}`)
-      parts.push(`bili_jct=${this.config.biliJct}`)
-      parts.push(`DedeUserID=${this.config.dedeUserId}`)
-      parts.push(`buvid3=${this.config.buvid3}`)
+    if (this.config.auth.sessdata) {
+      parts.push(`SESSDATA=${this.config.auth.sessdata}`)
+      parts.push(`bili_jct=${this.config.auth.biliJct}`)
+      parts.push(`DedeUserID=${this.config.auth.dedeUserId}`)
+      parts.push(`buvid3=${this.config.auth.buvid3}`)
     } else {
       // 读取 QR 登录存储的 cookie
       const rows = await this.ctx.database.get('bili.auth_data', { key: 'cookie' })
@@ -39,7 +41,7 @@ export class AuthManager {
           for (const [k, v] of Object.entries(cookies)) {
             parts.push(`${k}=${v}`)
           }
-        } catch {}
+        } catch (e) { logger.debug('Cookie JSON 解析失败: %s', String(e)) }
       }
     }
 
@@ -141,7 +143,7 @@ export class AuthManager {
         value: JSON.stringify(cookies),
         updatedAt: new Date(),
       }])
-    } catch {}
+    } catch (e) { logger.debug('QR 登录 Cookie 保存失败: %s', String(e)) }
   }
 
   /** 清除 WBI 缓存，强制下次请求时重新获取 */

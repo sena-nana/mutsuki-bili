@@ -3,6 +3,7 @@ import { type BiliApiClient, BiliApiError, RateLimitError, RiskControlError } fr
 import { dynamicItemToNotification, liveToNotification, videoItemToNotification } from './converters'
 import type { MessageFormatter } from './formatter'
 import type { Config } from './index'
+import { BOT_STATUS_ONLINE, LiveStatus } from './types'
 import type { AnyNotification, BiliLiveState, DynamicItem } from './types'
 
 const logger = new Logger('mutsuki-bili/poller')
@@ -22,22 +23,22 @@ export class PollerManager {
   ) {}
 
   start() {
-    this.ctx.setInterval(() => this.pollLive(), this.config.liveInterval)
-    this.ctx.setInterval(() => this.pollDynamic(), this.config.dynamicInterval)
-    this.ctx.setInterval(() => this.pollVideo(), this.config.videoInterval)
+    this.ctx.setInterval(() => this.pollLive(), this.config.polling.liveInterval)
+    this.ctx.setInterval(() => this.pollDynamic(), this.config.polling.dynamicInterval)
+    this.ctx.setInterval(() => this.pollVideo(), this.config.polling.videoInterval)
   }
 
   // ─── 重试辅助 ──────────────────────────────────────────────────────────────
 
   private async withRetry<T>(fn: () => Promise<T>): Promise<T | null> {
     let delay = 1000
-    for (let i = 0; i <= this.config.maxRetries; i++) {
+    for (let i = 0; i <= this.config.retry.maxRetries; i++) {
       try {
         return await fn()
       } catch (err) {
         if (err instanceof RateLimitError) {
-          logger.warn('触发限速，等待 %ds', this.config.rateLimitBackoff / 1000)
-          await sleep(this.config.rateLimitBackoff)
+          logger.warn('触发限速，等待 %ds', this.config.retry.rateLimitBackoff / 1000)
+          await sleep(this.config.retry.rateLimitBackoff)
           continue
         }
         if (err instanceof RiskControlError) {
@@ -49,12 +50,12 @@ export class PollerManager {
           logger.warn('Cookie 可能已过期 (code=%d)，请重新登录', err.code)
           return null
         }
-        if (i < this.config.maxRetries) {
+        if (i < this.config.retry.maxRetries) {
           await sleep(delay)
-          delay *= this.config.backoffFactor
+          delay *= this.config.retry.backoffFactor
           continue
         }
-        logger.warn('请求失败（已重试 %d 次）：%s', this.config.maxRetries, String(err))
+        logger.warn('请求失败（已重试 %d 次）：%s', this.config.retry.maxRetries, String(err))
         return null
       }
     }
@@ -87,7 +88,7 @@ export class PollerManager {
       const [, guildId] = splitPlatformId(row.guildId)
 
       const bot = this.ctx.bots.find(b => b.platform === platform)
-      if (!bot || bot.status !== 3 /* Universal.Status.ONLINE */) {
+      if (!bot || bot.status !== BOT_STATUS_ONLINE) {
         logger.debug('未找到可用 bot: platform=%s', platform)
         continue
       }
@@ -128,7 +129,7 @@ export class PollerManager {
     const liveInfo = await this.withRetry(() => this.api.getLiveStatus(roomId))
     if (!liveInfo) return
 
-    const isLive = liveInfo.live_status === 1
+    const isLive = liveInfo.live_status === LiveStatus.LIVE
 
     const [cached] = await this.ctx.database.get('bili.live_state', { uid })
     const wasLive = cached?.isLive ?? false

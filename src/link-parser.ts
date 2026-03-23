@@ -183,9 +183,9 @@ export function registerLinkParser(
   api: BiliApiClient,
   formatter: MessageFormatter,
 ): void {
-  if (!config.linkParsing) return
+  if (!config.linkParser.enabled) return
 
-  const cooldown = new LinkCooldownManager(config.linkCooldown)
+  const cooldown = new LinkCooldownManager(config.linkParser.cooldown)
 
   ctx.on('message', async (session: Session) => {
     if (session.selfId === session.userId) return

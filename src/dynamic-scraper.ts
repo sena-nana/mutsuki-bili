@@ -9,6 +9,9 @@ const logger = new Logger('mutsuki-bili/scraper')
 /** 同一 UID 的浏览器回退最小间隔 */
 const SCRAPE_COOLDOWN = 60_000
 
+/** 网络拦截后等待延迟响应的时间 */
+const NETWORK_SETTLE_DELAY = 2000
+
 export class DynamicScraper {
   private lastScrapeTime = new Map<string, number>()
 
@@ -20,7 +23,7 @@ export class DynamicScraper {
 
   /** puppeteer 服务是否可用且配置允许回退 */
   get available(): boolean {
-    return this.config.puppeteerFallback && !!(this.ctx as any).puppeteer
+    return this.config.puppeteer.fallback && !!(this.ctx as any).puppeteer
   }
 
   /**
@@ -180,14 +183,14 @@ export class DynamicScraper {
       } catch {}
     })
 
-    const timeout = this.config.puppeteerTimeout ?? 30_000
+    const timeout = this.config.puppeteer.timeout ?? 30_000
     await page.goto(`https://space.bilibili.com/${uid}/dynamic`, {
       waitUntil: 'networkidle0',
       timeout,
     })
 
     // 等待可能延迟到达的响应
-    await new Promise<void>(resolve => setTimeout(resolve, 2000))
+    await new Promise<void>(resolve => setTimeout(resolve, NETWORK_SETTLE_DELAY))
 
     return captured
   }

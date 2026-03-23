@@ -23,20 +23,30 @@ const logger = new Logger('mutsuki-bili')
 
 export interface Config {
   admins: AdminEntry[]
-  sessdata: string
-  biliJct: string
-  dedeUserId: string
-  buvid3: string
-  liveInterval: number
-  dynamicInterval: number
-  videoInterval: number
-  maxRetries: number
-  backoffFactor: number
-  rateLimitBackoff: number
-  puppeteerFallback: boolean
-  puppeteerTimeout: number
-  linkParsing: boolean
-  linkCooldown: number
+  auth: {
+    sessdata: string
+    biliJct: string
+    dedeUserId: string
+    buvid3: string
+  }
+  polling: {
+    liveInterval: number
+    dynamicInterval: number
+    videoInterval: number
+  }
+  retry: {
+    maxRetries: number
+    backoffFactor: number
+    rateLimitBackoff: number
+  }
+  puppeteer: {
+    fallback: boolean
+    timeout: number
+  }
+  linkParser: {
+    enabled: boolean
+    cooldown: number
+  }
 }
 
 export const Config: Schema<Config> = Schema.object({
@@ -50,24 +60,34 @@ export const Config: Schema<Config> = Schema.object({
       .description('推送类型'),
   })).default([]).description('UP主 绑定/订阅预设（启动时同步到数据库）'),
 
-  sessdata: Schema.string().default('').description('SESSDATA cookie（优先于 QR 登录；高级用法，建议通过控制台扫码登录）').role('secret').hidden(),
-  biliJct: Schema.string().default('').description('bili_jct cookie').role('secret').hidden(),
-  dedeUserId: Schema.string().default('').description('DedeUserID cookie').hidden(),
-  buvid3: Schema.string().default('').description('buvid3 cookie').hidden(),
+  auth: Schema.object({
+    sessdata: Schema.string().default('').description('SESSDATA cookie').role('secret'),
+    biliJct: Schema.string().default('').description('bili_jct cookie').role('secret'),
+    dedeUserId: Schema.string().default('').description('DedeUserID cookie'),
+    buvid3: Schema.string().default('').description('buvid3 cookie'),
+  }).description('B 站认证（高级用法，建议通过控制台扫码登录）'),
 
-  liveInterval: Schema.natural().role('ms').default(Time.minute).description('直播检测间隔'),
-  dynamicInterval: Schema.natural().role('ms').default(2 * Time.minute).description('动态检测间隔'),
-  videoInterval: Schema.natural().role('ms').default(5 * Time.minute).description('视频检测间隔'),
+  polling: Schema.object({
+    liveInterval: Schema.natural().role('ms').default(Time.minute).description('直播检测间隔'),
+    dynamicInterval: Schema.natural().role('ms').default(2 * Time.minute).description('动态检测间隔'),
+    videoInterval: Schema.natural().role('ms').default(5 * Time.minute).description('视频检测间隔'),
+  }).description('轮询间隔'),
 
-  maxRetries: Schema.natural().default(3).description('单次请求最大重试次数'),
-  backoffFactor: Schema.number().default(2).description('退避系数'),
-  rateLimitBackoff: Schema.natural().role('ms').default(5 * Time.minute).description('触发限速后的等待时间'),
+  retry: Schema.object({
+    maxRetries: Schema.natural().default(3).description('单次请求最大重试次数'),
+    backoffFactor: Schema.number().default(2).description('退避系数'),
+    rateLimitBackoff: Schema.natural().role('ms').default(5 * Time.minute).description('触发限速后的等待时间'),
+  }).description('重试策略'),
 
-  puppeteerFallback: Schema.boolean().default(true).description('API 触发风控(352)时是否使用浏览器回退获取动态'),
-  puppeteerTimeout: Schema.natural().role('ms').default(30 * Time.second).description('浏览器回退的页面加载超时时间'),
+  puppeteer: Schema.object({
+    fallback: Schema.boolean().default(true).description('API 触发风控(352)时是否使用浏览器回退获取动态'),
+    timeout: Schema.natural().role('ms').default(30 * Time.second).description('浏览器回退的页面加载超时时间'),
+  }).description('Puppeteer 浏览器回退'),
 
-  linkParsing: Schema.boolean().default(true).description('是否开启聊天消息中的 B 站链接自动解析'),
-  linkCooldown: Schema.natural().role('ms').default(Time.minute).description('同一链接在同一频道的解析冷却时间'),
+  linkParser: Schema.object({
+    enabled: Schema.boolean().default(true).description('是否开启聊天消息中的 B 站链接自动解析'),
+    cooldown: Schema.natural().role('ms').default(Time.minute).description('同一链接在同一频道的解析冷却时间'),
+  }).description('链接解析'),
 })
 
 // ─── Plugin Entry ─────────────────────────────────────────────────────────────

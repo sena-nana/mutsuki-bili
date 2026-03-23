@@ -1,3 +1,6 @@
+import {
+  LiveStatus,
+} from './types'
 import type {
   DynamicItem,
   DynamicNotification,
@@ -91,7 +94,7 @@ export function liveToNotification(
 
 /** LiveRoomInfo → LiveInfoNotification（用于链接解析展示当前状态） */
 export function liveRoomToInfoNotification(info: LiveRoomInfo): LiveInfoNotification {
-  const status = info.live_status === 1 ? '直播中' : info.live_status === 2 ? '轮播中' : '未开播'
+  const status = info.live_status === LiveStatus.LIVE ? '直播中' : info.live_status === LiveStatus.REPLAY ? '轮播中' : '未开播'
   return {
     type: 'live_info',
     roomId: String(info.room_id),
@@ -113,6 +116,6 @@ export function userInfoToNotification(info: UserInfo): UserNotification {
     faceUrl: info.face,
     sign: info.sign ?? '',
     liveRoomUrl: info.live_room?.url,
-    liveStatus: info.live_room ? (info.live_room.liveStatus === 1 ? '直播中' : '未开播') : undefined,
+    liveStatus: info.live_room ? (info.live_room.liveStatus === LiveStatus.LIVE ? '直播中' : '未开播') : undefined,
   }
 }

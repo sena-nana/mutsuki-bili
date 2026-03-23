@@ -50,8 +50,8 @@ export function registerConsole(ctx: Context, config: Config, auth: AuthManager)
 }
 
 async function getAuthState(ctx: Context, config: Config): Promise<BiliAuthState> {
-  if (config.sessdata) {
-    return { isLoggedIn: true, loginSource: 'config', username: config.dedeUserId || undefined }
+  if (config.auth.sessdata) {
+    return { isLoggedIn: true, loginSource: 'config', username: config.auth.dedeUserId || undefined }
   }
   const rows = await ctx.database.get('bili.auth_data', { key: 'cookie' })
   if (rows.length) {
