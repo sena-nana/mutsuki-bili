@@ -46,4 +46,12 @@ export function registerModels(ctx: Context) {
     value: 'text',
     updatedAt: 'timestamp',
   }, { primary: 'key' })
+
+  ctx.model.extend('bili.binding', {
+    id: 'unsigned',
+    uid: 'string(63)',
+    verified: { type: 'boolean', initial: false },
+    verifyCode: { type: 'string', length: 63, initial: '' },
+    boundAt: 'timestamp',
+  }, { primary: 'id' })
 }

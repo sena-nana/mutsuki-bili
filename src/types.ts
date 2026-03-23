@@ -46,6 +46,14 @@ export interface BiliAuthData {
   updatedAt: Date
 }
 
+export interface BiliBinding {
+  id: number         // Koishi 内部 user.id（主键）
+  uid: string        // B 站 UID
+  verified: boolean  // 是否已通过签名验证
+  verifyCode: string // 验证码
+  boundAt: Date      // 绑定完成时间
+}
+
 declare module 'koishi' {
   interface Tables {
     'bili.admin': BiliAdmin
@@ -54,6 +62,7 @@ declare module 'koishi' {
     'bili.dynamic_state': BiliDynamicState
     'bili.video_state': BiliVideoState
     'bili.auth_data': BiliAuthData
+    'bili.binding': BiliBinding
   }
 }
 
@@ -80,6 +89,7 @@ export interface UserInfo {
   mid: number
   name: string
   face: string
+  sign: string
   live_room: {
     roomid: number
     liveStatus: number

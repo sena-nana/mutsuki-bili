@@ -5,7 +5,9 @@
       "WebFetch(domain:github.com)",
       "Bash(yarn build:*)",
       "Bash(xargs grep:*)",
-      "WebFetch(domain:koishi.chat)"
+      "WebFetch(domain:koishi.chat)",
+      "Bash(find /c/Files/workspace/mutsuki-bili -type f -name *.ts -o -name *.js)",
+      "Bash(find /c/Files/workspace/mutsuki-bili/node_modules -type f -name *.d.ts)"
     ]
   }
 }
