@@ -7,7 +7,7 @@ export function getSessionContext(session: Session) {
     guildId: `${session.platform}:${session.guildId}`,
     userId: `${session.platform}:${session.userId}`,
     channelId: `${session.platform}:${session.channelId}`,
-    koishiUserId: session.user?.id,
+    koishiUserId: (session.user as { id?: number } | undefined)?.id,
   }
 }
 
@@ -18,7 +18,7 @@ export function getSessionContext(session: Session) {
  *   3. 用户自助绑定了该 uid（跨群回退）
  */
 export async function checkAuthority(session: Session, ctx: Context, uid?: string): Promise<boolean> {
-  if ((session.user?.authority ?? 0) >= 4) return true
+  if (((session.user as { authority?: number } | undefined)?.authority ?? 0) >= 4) return true
   if (!uid || !session.guildId) return false
 
   const { guildId, userId, koishiUserId } = getSessionContext(session)

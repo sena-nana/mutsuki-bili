@@ -184,7 +184,7 @@ export class BiliApiClient {
       await this.ctx.http.head('https://b23.tv/' + code, {
         redirect: 'manual',
         headers: COMMON_HEADERS,
-      })
+      } as HTTP.Config)
     } catch (err: any) {
       // redirect:manual 下 3xx 会抛出错误，从中提取 Location
       const location = err?.response?.headers?.location

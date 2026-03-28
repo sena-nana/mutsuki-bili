@@ -65,7 +65,7 @@ export const Config: Schema<Config> = Schema.object({
     biliJct: Schema.string().default('').description('bili_jct cookie').role('secret'),
     dedeUserId: Schema.string().default('').description('DedeUserID cookie'),
     buvid3: Schema.string().default('').description('buvid3 cookie'),
-  }).description('B 站认证（高级用法，建议通过控制台扫码登录）'),
+  }).description('B 站认证（高级用法，建议通过控制台扫码登录）').hidden(),
 
   polling: Schema.object({
     liveInterval: Schema.natural().role('ms').default(Time.minute).description('直播检测间隔'),
