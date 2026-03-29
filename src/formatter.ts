@@ -2,6 +2,7 @@ import { h } from 'koishi'
 import type {
   AnyNotification,
   DynamicNotification,
+  GfItemNotification,
   LiveInfoNotification,
   LiveNotification,
   MihuashiProfileNotification,
@@ -21,6 +22,7 @@ export class MessageFormatter {
       case 'live_info':  return this.formatLiveInfo(notification)
       case 'mhs_profile': return this.formatMihuashiProfile(notification)
       case 'mhs_stall':   return this.formatMihuashiStall(notification)
+      case 'gf_item':     return this.formatGfItem(notification)
     }
   }
 
@@ -121,6 +123,18 @@ export class MessageFormatter {
     if (n.price) text += `价格：${n.price}\n`
     if (n.status) text += `状态：${n.status}\n`
     text += `https://www.mihuashi.com/stalls/${n.id}`
+    elements.push(h.text(text))
+    return elements
+  }
+
+  private formatGfItem(n: GfItemNotification): h[] {
+    const elements: h[] = []
+    if (n.coverUrl) elements.push(h.image(n.coverUrl))
+    let text = `\n【工坊】${n.name}\n`
+    if (n.price) text += `价格：${n.price}\n`
+    if (n.shopName) text += `店铺：${n.shopName}\n`
+    if (n.sales) text += `${n.sales}\n`
+    text += `https://gf.bilibili.com/item/detail/${n.id}`
     elements.push(h.text(text))
     return elements
   }

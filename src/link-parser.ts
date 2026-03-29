@@ -38,9 +38,12 @@ const RE_MHS_PROFILE = /(?:https?:\/\/)?(?:www\.)?mihuashi\.com\/profiles\/(\d+)
 /** 米画师橱窗：mihuashi.com/stalls/{id} */
 const RE_MHS_STALL = /(?:https?:\/\/)?(?:www\.)?mihuashi\.com\/stalls\/(\d+)/g
 
+/** B 站工坊商品：gf.bilibili.com/item/detail/{id} */
+const RE_GF_ITEM = /(?:https?:\/\/)?gf\.bilibili\.com\/item\/detail\/(\d+)/g
+
 // ─── 链接类型 ─────────────────────────────────────────────────────────────────
 
-type BiliLinkType = 'video' | 'dynamic' | 'user' | 'live' | 'short' | 'mhs_profile' | 'mhs_stall'
+type BiliLinkType = 'video' | 'dynamic' | 'user' | 'live' | 'short' | 'mhs_profile' | 'mhs_stall' | 'gf_item'
 
 interface ParsedBiliLink {
   type: BiliLinkType
@@ -72,6 +75,7 @@ function parseBiliLinks(text: string): ParsedBiliLink[] {
     [RE_SHORT_URL, 'short'],
     [RE_MHS_PROFILE, 'mhs_profile'],
     [RE_MHS_STALL, 'mhs_stall'],
+    [RE_GF_ITEM, 'gf_item'],
   ]
   for (const [re, type] of patterns) {
     for (const m of text.matchAll(re)) collect(type, m)
@@ -163,6 +167,11 @@ async function handleParsedLink(
         const stall = await mhsScraper.scrapeStall(link.id)
         return stall ? formatter.format(stall) : null
       }
+
+      case 'gf_item': {
+        const item = await api.getGfItemInfo(link.id)
+        return formatter.format(item)
+      }
     }
   } catch (err) {
     logger.debug('处理链接失败 [%s:%s]: %s', link.type, link.id, String(err))
@@ -186,7 +195,7 @@ export function registerLinkParser(
   ctx.on('message', async (session: Session) => {
     if (session.selfId === session.userId) return
     if (!session.content) return
-    if ((session as any).parsed?.prefix !== undefined) return
+    if ((session as Session & { parsed?: { prefix?: string } }).parsed?.prefix !== undefined) return
 
     const allLinks = parseBiliLinks(session.content)
     if (allLinks.length === 0) return

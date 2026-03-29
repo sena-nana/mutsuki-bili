@@ -254,7 +254,18 @@ export interface MihuashiStallNotification {
   status: string
 }
 
+export interface GfItemNotification {
+  type: 'gf_item'
+  id: string
+  name: string
+  coverUrl: string
+  price: string
+  shopName: string
+  sales: string
+}
+
 export type AnyNotification =
   | LiveNotification | DynamicNotification | VideoNotification
   | UserNotification | LiveInfoNotification
   | MihuashiProfileNotification | MihuashiStallNotification
+  | GfItemNotification
