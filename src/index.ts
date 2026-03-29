@@ -5,10 +5,18 @@ import { registerCommands } from './commands'
 import { registerConsole } from './console'
 import { registerModels } from './db'
 import { DynamicScraper } from './dynamic-scraper'
-import { MessageFormatter } from './formatter'
 import { registerLinkParser } from './link-parser'
-import { MihuashiScraper } from './mihuashi-scraper'
 import { PollerManager } from './poller'
+import type { ResolverContext } from './resolvers/base'
+import { DynamicResolver } from './resolvers/dynamic'
+import { GfItemResolver } from './resolvers/gf-item'
+import { LiveInfoResolver } from './resolvers/live-info'
+import { MhsProfileResolver } from './resolvers/mhs-profile'
+import { MhsStallResolver } from './resolvers/mhs-stall'
+import { ResolverRegistry } from './resolvers/registry'
+import { ShortLinkResolver } from './resolvers/short-link'
+import { UserResolver } from './resolvers/user'
+import { VideoResolver } from './resolvers/video'
 import type { AdminEntry } from './types'
 
 export const name = 'mutsuki-bili'
@@ -96,12 +104,27 @@ export const Config: Schema<Config> = Schema.object({
 export function apply(ctx: Context, config: Config) {
   registerModels(ctx)
 
-  const auth      = new AuthManager(ctx, config)
-  const scraper      = new DynamicScraper(ctx, auth, config)
-  const mhsScraper   = new MihuashiScraper(ctx)
-  const api          = new BiliApiClient(ctx, auth, config, scraper)
-  const formatter    = new MessageFormatter()
-  const poller       = new PollerManager(ctx, config, api, formatter)
+  const auth    = new AuthManager(ctx, config)
+  const scraper = new DynamicScraper(ctx, auth, config)
+  const api     = new BiliApiClient(ctx, auth, config, scraper)
+  const poller  = new PollerManager(ctx, config, api)
+
+  // 构建 resolver 注册表
+  const registry = new ResolverRegistry()
+  registry.register(new VideoResolver())
+  registry.register(new DynamicResolver())
+  registry.register(new LiveInfoResolver())
+  registry.register(new UserResolver())
+  registry.register(new ShortLinkResolver())
+  registry.register(new MhsProfileResolver())
+  registry.register(new MhsStallResolver())
+  registry.register(new GfItemResolver())
+
+  const resolverCtx: ResolverContext = {
+    api,
+    http: ctx.http,
+    puppeteer: (ctx as Context & { puppeteer?: ResolverContext['puppeteer'] }).puppeteer,
+  }
 
   // 将 config.admins 静态预设同步到 bili.admin 表
   ctx.on('ready', async () => {
@@ -110,9 +133,9 @@ export function apply(ctx: Context, config: Config) {
     logger.info('mutsuki-bili 已启动')
   })
 
-  registerCommands(ctx, config, api, auth, formatter)
+  registerCommands(ctx, config, api, auth)
   registerConsole(ctx, config, auth)
-  registerLinkParser(ctx, config, api, formatter, mhsScraper)
+  registerLinkParser(ctx, config, registry, resolverCtx)
 }
 
 async function syncAdminsFromConfig(ctx: Context, config: Config) {

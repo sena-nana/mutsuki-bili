@@ -1,10 +1,11 @@
-import { type Context, Logger } from 'koishi'
+import { type Context, type h, Logger } from 'koishi'
 import { type BiliApiClient, BiliApiError, RateLimitError, RiskControlError } from './api'
-import { dynamicItemToNotification, liveToNotification, videoItemToNotification } from './converters'
-import type { MessageFormatter } from './formatter'
 import type { Config } from './index'
+import { DynamicResolver } from './resolvers/dynamic'
+import { LivePushResolver } from './resolvers/live-push'
+import { VideoResolver } from './resolvers/video'
 import { BOT_STATUS_ONLINE, LiveStatus } from './types'
-import type { AnyNotification, BiliLiveState, DynamicItem } from './types'
+import type { BiliLiveState, DynamicItem } from './types'
 
 const logger = new Logger('mutsuki-bili/poller')
 
@@ -15,11 +16,14 @@ function sleep(ms: number) {
 }
 
 export class PollerManager {
+  private livePush = new LivePushResolver()
+  private dynamicResolver = new DynamicResolver()
+  private videoResolver = new VideoResolver()
+
   constructor(
     private ctx: Context,
     private config: Config,
     private api: BiliApiClient,
-    private formatter: MessageFormatter,
   ) {}
 
   start() {
@@ -42,7 +46,6 @@ export class PollerManager {
           continue
         }
         if (err instanceof RiskControlError) {
-          // 352 风控：回退已在 api.getUserDynamics 中尝试过，此处不重试
           logger.warn('触发风控(352)且浏览器回退不可用/失败')
           return null
         }
@@ -75,11 +78,9 @@ export class PollerManager {
 
   // ─── 消息分发（读取 bili.admin 表确定推送目标）────────────────────────────
 
-  private async dispatch(uid: string, type: 'live' | 'dynamic' | 'video', notification: AnyNotification) {
-    const elements = this.formatter.format(notification)
+  private async dispatch(uid: string, type: 'live' | 'dynamic' | 'video', elements: h[]) {
     if (!elements.length) return
 
-    // 找到所有订阅该 UID、包含该类型且未暂停的记录
     const rows = await this.ctx.database.get('bili.admin', { uid, paused: false })
     for (const row of rows) {
       if (!row.types.split(',').includes(type)) continue
@@ -148,12 +149,13 @@ export class PollerManager {
 
     if (isLive && !wasLive) {
       const user = { name: userInfo.name, face: userInfo.face, uid }
-      await this.dispatch(uid, 'live', liveToNotification(liveInfo, user, 'live_start', roomId, newState.startedAt))
+      const notification = this.livePush.build(liveInfo, user, 'live_start', roomId, newState.startedAt)
+      await this.dispatch(uid, 'live', this.livePush.render(notification))
     } else if (!isLive && wasLive) {
-      // 下播时使用缓存的直播信息
       const user = { name: userInfo.name, face: userInfo.face, uid }
       const endInfo = { ...liveInfo, title: cached?.title ?? '', keyframe: cached?.coverUrl ?? '', area_name: cached?.areaName ?? '' }
-      await this.dispatch(uid, 'live', liveToNotification(endInfo, user, 'live_end', roomId, cached?.startedAt ?? now))
+      const notification = this.livePush.build(endInfo, user, 'live_end', roomId, cached?.startedAt ?? now)
+      await this.dispatch(uid, 'live', this.livePush.render(notification))
     }
   }
 
@@ -194,7 +196,8 @@ export class PollerManager {
     if (!newItems.length) return
 
     for (const item of newItems.reverse()) {
-      await this.dispatch(uid, 'dynamic', dynamicItemToNotification(item))
+      const notification = this.dynamicResolver.buildFromItem(item)
+      await this.dispatch(uid, 'dynamic', this.dynamicResolver.render(notification))
     }
 
     await this.ctx.database.upsert('bili.dynamic_state', [{
@@ -235,7 +238,8 @@ export class PollerManager {
 
     for (const video of newVideos.reverse()) {
       const [userCached] = await this.ctx.database.get('bili.user', { uid })
-      await this.dispatch(uid, 'video', videoItemToNotification(video, userCached?.name ?? uid, uid))
+      const notification = this.videoResolver.buildFromItem(video, userCached?.name ?? uid, uid)
+      await this.dispatch(uid, 'video', this.videoResolver.render(notification))
     }
 
     await this.ctx.database.upsert('bili.video_state', [{

@@ -1,10 +1,11 @@
 import type { Command, Context } from 'koishi'
 import type { BiliApiClient } from '../api'
-import { dynamicItemToNotification } from '../converters'
-import type { MessageFormatter } from '../formatter'
+import { DynamicResolver } from '../resolvers/dynamic'
 import { checkAuthority, getBoundUid, getSessionContext } from './helpers'
 
-export function registerUserCommands(parent: Command, ctx: Context, api: BiliApiClient, formatter: MessageFormatter) {
+const dynamicResolver = new DynamicResolver()
+
+export function registerUserCommands(parent: Command, ctx: Context, api: BiliApiClient) {
   parent.subcommand('.pause [uid:string]', '暂停当前群的推送')
     .userFields(['id'])
     .action(async ({ session }, uid) => {
@@ -43,8 +44,8 @@ export function registerUserCommands(parent: Command, ctx: Context, api: BiliApi
       try {
         const { items } = await api.getUserDynamics(targetUid)
         if (!items.length) return '该 UP主 暂无动态'
-        const notification = dynamicItemToNotification(items[0])
-        const elements = formatter.format(notification)
+        const notification = dynamicResolver.buildFromItem(items[0])
+        const elements = dynamicResolver.render(notification)
         await session.send(elements)
       } catch (err) {
         return `获取动态失败：${String(err)}`

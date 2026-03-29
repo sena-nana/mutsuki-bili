@@ -7,7 +7,6 @@ import type {
   BiliApiResponse,
   DynamicFeedData,
   DynamicItem,
-  GfItemNotification,
   LiveRoomInfo,
   UserInfo,
   VideoDetail,
@@ -176,37 +175,6 @@ export class BiliApiClient {
       { id: dynamicId },
     )
     return data.item
-  }
-
-  /** 获取 B 站工坊商品信息（无需鉴权） */
-  async getGfItemInfo(itemsId: string): Promise<GfItemNotification> {
-    const resp = await this.ctx.http.get<{
-      success: boolean
-      data: {
-        name: string
-        price: number
-        mainImgList: string[]
-        saleNum: string
-        shopInfo: { shopUserNickName: string }
-        itemsDiscountPriceVO?: { discountPrice: number }
-      }
-    }>('https://mall.bilibili.com/mall-up-search/items/info', {
-      params: { itemsId },
-      headers: { ...COMMON_HEADERS, Referer: 'https://gf.bilibili.com/' },
-    })
-    if (!resp?.success || !resp.data) throw new BiliApiError(-1, '工坊商品不存在')
-    const d = resp.data
-    const actualPrice = d.itemsDiscountPriceVO?.discountPrice ?? d.price
-    const cover = d.mainImgList?.[0] ?? ''
-    return {
-      type: 'gf_item',
-      id: itemsId,
-      name: d.name,
-      coverUrl: cover.startsWith('//') ? `https:${cover}` : cover,
-      price: `¥${(actualPrice / 100).toFixed(2)}`,
-      shopName: d.shopInfo?.shopUserNickName ?? '',
-      sales: d.saleNum ?? '',
-    }
   }
 
   /** 解析 b23.tv 短链接，返回重定向后的实际 URL */
