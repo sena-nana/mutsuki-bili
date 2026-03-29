@@ -7,6 +7,7 @@ import { registerModels } from './db'
 import { DynamicScraper } from './dynamic-scraper'
 import { MessageFormatter } from './formatter'
 import { registerLinkParser } from './link-parser'
+import { MihuashiScraper } from './mihuashi-scraper'
 import { PollerManager } from './poller'
 import type { AdminEntry } from './types'
 
@@ -96,10 +97,11 @@ export function apply(ctx: Context, config: Config) {
   registerModels(ctx)
 
   const auth      = new AuthManager(ctx, config)
-  const scraper   = new DynamicScraper(ctx, auth, config)
-  const api       = new BiliApiClient(ctx, auth, config, scraper)
-  const formatter = new MessageFormatter()
-  const poller    = new PollerManager(ctx, config, api, formatter)
+  const scraper      = new DynamicScraper(ctx, auth, config)
+  const mhsScraper   = new MihuashiScraper(ctx)
+  const api          = new BiliApiClient(ctx, auth, config, scraper)
+  const formatter    = new MessageFormatter()
+  const poller       = new PollerManager(ctx, config, api, formatter)
 
   // 将 config.admins 静态预设同步到 bili.admin 表
   ctx.on('ready', async () => {
@@ -110,7 +112,7 @@ export function apply(ctx: Context, config: Config) {
 
   registerCommands(ctx, config, api, auth, formatter)
   registerConsole(ctx, config, auth)
-  registerLinkParser(ctx, config, api, formatter)
+  registerLinkParser(ctx, config, api, formatter, mhsScraper)
 }
 
 async function syncAdminsFromConfig(ctx: Context, config: Config) {

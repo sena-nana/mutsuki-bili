@@ -4,6 +4,8 @@ import type {
   DynamicNotification,
   LiveInfoNotification,
   LiveNotification,
+  MihuashiProfileNotification,
+  MihuashiStallNotification,
   UserNotification,
   VideoNotification,
 } from './types'
@@ -17,6 +19,8 @@ export class MessageFormatter {
       case 'video':      return this.formatVideo(notification)
       case 'user':       return this.formatUser(notification)
       case 'live_info':  return this.formatLiveInfo(notification)
+      case 'mhs_profile': return this.formatMihuashiProfile(notification)
+      case 'mhs_stall':   return this.formatMihuashiStall(notification)
     }
   }
 
@@ -95,6 +99,29 @@ export class MessageFormatter {
       `分区：${n.areaName}\n` +
       `https://live.bilibili.com/${n.roomId}`,
     ))
+    return elements
+  }
+
+  private formatMihuashiProfile(n: MihuashiProfileNotification): h[] {
+    const elements: h[] = []
+    if (n.avatarUrl) elements.push(h.image(n.avatarUrl))
+    let text = `\n【米画师】${n.name}\n`
+    if (n.bio) text += `${n.bio}\n`
+    if (n.tags.length) text += `标签：${n.tags.join('、')}\n`
+    text += `https://www.mihuashi.com/profiles/${n.id}`
+    elements.push(h.text(text))
+    return elements
+  }
+
+  private formatMihuashiStall(n: MihuashiStallNotification): h[] {
+    const elements: h[] = []
+    if (n.coverUrl) elements.push(h.image(n.coverUrl))
+    let text = `\n【米画师橱窗】${n.title}\n`
+    if (n.artistName) text += `画师：${n.artistName}\n`
+    if (n.price) text += `价格：${n.price}\n`
+    if (n.status) text += `状态：${n.status}\n`
+    text += `https://www.mihuashi.com/stalls/${n.id}`
+    elements.push(h.text(text))
     return elements
   }
 }

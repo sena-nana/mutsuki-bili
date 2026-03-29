@@ -8,6 +8,7 @@ import {
 } from './converters'
 import type { MessageFormatter } from './formatter'
 import type { Config } from './index'
+import type { MihuashiScraper } from './mihuashi-scraper'
 
 const logger = new Logger('mutsuki-bili/link-parser')
 
@@ -31,9 +32,15 @@ const RE_SHORT_URL = /(?:https?:\/\/)?b23\.tv\/([A-Za-z0-9]+)/g
 /** 裸 BV 号（Base58 字符集，排除 0/I/O/l） */
 const RE_BVID = /\bBV[1-9A-HJ-NP-Za-km-z]{10}\b/g
 
+/** 米画师画师主页：mihuashi.com/profiles/{id} */
+const RE_MHS_PROFILE = /(?:https?:\/\/)?(?:www\.)?mihuashi\.com\/profiles\/(\d+)/g
+
+/** 米画师橱窗：mihuashi.com/stalls/{id} */
+const RE_MHS_STALL = /(?:https?:\/\/)?(?:www\.)?mihuashi\.com\/stalls\/(\d+)/g
+
 // ─── 链接类型 ─────────────────────────────────────────────────────────────────
 
-type BiliLinkType = 'video' | 'dynamic' | 'user' | 'live' | 'short'
+type BiliLinkType = 'video' | 'dynamic' | 'user' | 'live' | 'short' | 'mhs_profile' | 'mhs_stall'
 
 interface ParsedBiliLink {
   type: BiliLinkType
@@ -63,6 +70,8 @@ function parseBiliLinks(text: string): ParsedBiliLink[] {
     [RE_USER_URL, 'user'],
     [RE_LIVE_URL, 'live'],
     [RE_SHORT_URL, 'short'],
+    [RE_MHS_PROFILE, 'mhs_profile'],
+    [RE_MHS_STALL, 'mhs_stall'],
   ]
   for (const [re, type] of patterns) {
     for (const m of text.matchAll(re)) collect(type, m)
@@ -108,6 +117,7 @@ async function handleParsedLink(
   link: ParsedBiliLink,
   api: BiliApiClient,
   formatter: MessageFormatter,
+  mhsScraper?: MihuashiScraper,
 ): Promise<h[] | null> {
   try {
     switch (link.type) {
@@ -139,7 +149,19 @@ async function handleParsedLink(
         const subLinks = parseBiliLinks(realUrl)
         const resolved = subLinks.find(l => l.type !== 'short')
         if (!resolved) return null
-        return handleParsedLink(resolved, api, formatter)
+        return handleParsedLink(resolved, api, formatter, mhsScraper)
+      }
+
+      case 'mhs_profile': {
+        if (!mhsScraper?.available) return null
+        const profile = await mhsScraper.scrapeProfile(link.id)
+        return profile ? formatter.format(profile) : null
+      }
+
+      case 'mhs_stall': {
+        if (!mhsScraper?.available) return null
+        const stall = await mhsScraper.scrapeStall(link.id)
+        return stall ? formatter.format(stall) : null
       }
     }
   } catch (err) {
@@ -155,6 +177,7 @@ export function registerLinkParser(
   config: Config,
   api: BiliApiClient,
   formatter: MessageFormatter,
+  mhsScraper?: MihuashiScraper,
 ): void {
   if (!config.linkParser.enabled) return
 
@@ -174,7 +197,7 @@ export function registerLinkParser(
     for (const link of linksToProcess) {
       if (!cooldown.check(channelKey, link)) continue
       try {
-        const elements = await handleParsedLink(link, api, formatter)
+        const elements = await handleParsedLink(link, api, formatter, mhsScraper)
         if (elements?.length) {
           await session.send(elements)
         }

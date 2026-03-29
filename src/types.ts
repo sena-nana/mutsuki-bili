@@ -235,6 +235,26 @@ export interface LiveInfoNotification {
   status: '直播中' | '轮播中' | '未开播'
 }
 
+export interface MihuashiProfileNotification {
+  type: 'mhs_profile'
+  id: string
+  name: string
+  avatarUrl: string
+  bio: string
+  tags: string[]
+}
+
+export interface MihuashiStallNotification {
+  type: 'mhs_stall'
+  id: string
+  title: string
+  coverUrl: string
+  artistName: string
+  price: string
+  status: string
+}
+
 export type AnyNotification =
   | LiveNotification | DynamicNotification | VideoNotification
   | UserNotification | LiveInfoNotification
+  | MihuashiProfileNotification | MihuashiStallNotification
