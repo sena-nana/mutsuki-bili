@@ -1,5 +1,6 @@
-import { Context, Logger } from 'koishi'
+import { type Context, Logger } from 'koishi'
 import { createHash } from 'node:crypto'
+import { toDataURL } from 'qrcode'
 import type { Config } from './index'
 import type { WbiKeys } from './types'
 
@@ -21,7 +22,7 @@ export class AuthManager {
   constructor(
     private ctx: Context,
     private config: Config,
-  ) {}
+  ) { }
 
   /** 组装 Cookie 请求头字符串，config 优先，其次读取 DB */
   async buildCookieHeader(): Promise<string> {
@@ -99,6 +100,14 @@ export class AuthManager {
       url: resp?.data?.url ?? '',
       qrcodeKey: resp?.data?.qrcode_key ?? '',
     }
+  }
+
+  /** 生成二维码并返回 data URI（base64 PNG），避免依赖外部渲染服务 */
+  async generateQrDataUrl(): Promise<{ dataUrl: string; qrcodeKey: string }> {
+    const { url, qrcodeKey } = await this.generateQrCode()
+    if (!url) return { dataUrl: '', qrcodeKey: '' }
+    const dataUrl = await toDataURL(url, { width: 200, margin: 2 })
+    return { dataUrl, qrcodeKey }
   }
 
   /**

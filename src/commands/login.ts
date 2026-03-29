@@ -8,12 +8,12 @@ export function registerLoginCommand(parent: Command, ctx: Context, auth: AuthMa
     .action(async ({ session }) => {
       if (!await checkAuthority(session, ctx)) return '权限不足'
 
-      const { url, qrcodeKey } = await auth.generateQrCode()
-      if (!url) return '获取二维码失败，请稍后重试'
+      const { dataUrl, qrcodeKey } = await auth.generateQrDataUrl()
+      if (!dataUrl) return '获取二维码失败，请稍后重试'
 
       await session.send([
         h.text('请使用 B 站 App 扫描以下二维码登录（有效期 3 分钟）：\n'),
-        h.image(`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`),
+        h.image(dataUrl),
       ])
 
       let attempts = 0

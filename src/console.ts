@@ -31,9 +31,8 @@ export function registerConsole(ctx: Context, config: Config, auth: AuthManager)
     })
 
     ctx.console.addListener('bili/generate-qr', async () => {
-      const { url, qrcodeKey } = await auth.generateQrCode()
-      const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`
-      return { qrImageUrl, qrcodeKey }
+      const { dataUrl, qrcodeKey } = await auth.generateQrDataUrl()
+      return { qrImageUrl: dataUrl, qrcodeKey }
     })
 
     ctx.console.addListener('bili/poll-qr', async (qrcodeKey: string) => {
