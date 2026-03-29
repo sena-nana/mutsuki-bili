@@ -48,20 +48,25 @@ function parseBiliLinks(text: string): ParsedBiliLink[] {
   const results: ParsedBiliLink[] = []
   const seen = new Set<string>()
 
-  const collect = (_regex: RegExp, type: BiliLinkType, raw: string, id: string) => {
-    const key = `${type}:${id}`
+  const collect = (type: BiliLinkType, m: RegExpMatchArray) => {
+    const key = `${type}:${m[1]}`
     if (!seen.has(key)) {
       seen.add(key)
-      results.push({ type, id, raw })
+      results.push({ type, id: m[1], raw: m[0] })
     }
   }
 
-  // 按特异性从高到低：URL 优先，裸 BV 号最后
-  for (const m of text.matchAll(RE_VIDEO_URL)) collect(RE_VIDEO_URL, 'video', m[0], m[1])
-  for (const m of text.matchAll(RE_DYNAMIC_URL)) collect(RE_DYNAMIC_URL, 'dynamic', m[0], m[1])
-  for (const m of text.matchAll(RE_USER_URL)) collect(RE_USER_URL, 'user', m[0], m[1])
-  for (const m of text.matchAll(RE_LIVE_URL)) collect(RE_LIVE_URL, 'live', m[0], m[1])
-  for (const m of text.matchAll(RE_SHORT_URL)) collect(RE_SHORT_URL, 'short', m[0], m[1])
+  // 按特异性从高到低匹配：URL 优先，裸 BV 号最后
+  const patterns: [RegExp, BiliLinkType][] = [
+    [RE_VIDEO_URL, 'video'],
+    [RE_DYNAMIC_URL, 'dynamic'],
+    [RE_USER_URL, 'user'],
+    [RE_LIVE_URL, 'live'],
+    [RE_SHORT_URL, 'short'],
+  ]
+  for (const [re, type] of patterns) {
+    for (const m of text.matchAll(re)) collect(type, m)
+  }
 
   // 裸 BV 号：跳过已被视频 URL 捕获的
   for (const m of text.matchAll(RE_BVID)) {
@@ -72,26 +77,6 @@ function parseBiliLinks(text: string): ParsedBiliLink[] {
     }
   }
 
-  return results
-}
-
-// ─── 小程序卡片解析 ──────────────────────────────────────────────────────────
-
-/** 从消息元素中提取 QQ 小程序/JSON 卡片内的 B 站链接 */
-function parseJsonElements(elements: h[]): ParsedBiliLink[] {
-  const results: ParsedBiliLink[] = []
-  for (const el of elements) {
-    if (el.type !== 'json') continue
-    try {
-      const data = JSON.parse(el.attrs?.data ?? '{}')
-      const url = data?.meta?.detail_1?.qqdocurl
-        ?? data?.meta?.news?.jumpUrl
-        ?? data?.meta?.music?.jumpUrl
-        ?? data?.meta?.detail_1?.preview
-        ?? ''
-      if (url) results.push(...parseBiliLinks(url))
-    } catch {}
-  }
   return results
 }
 
@@ -163,18 +148,6 @@ async function handleParsedLink(
   }
 }
 
-// ─── 去重辅助 ─────────────────────────────────────────────────────────────────
-
-function deduplicateLinks(links: ParsedBiliLink[]): ParsedBiliLink[] {
-  const seen = new Set<string>()
-  return links.filter(link => {
-    const key = `${link.type}:${link.id}`
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
-}
-
 // ─── 注册入口 ─────────────────────────────────────────────────────────────────
 
 export function registerLinkParser(
@@ -192,9 +165,7 @@ export function registerLinkParser(
     if (!session.content) return
     if ((session as any).parsed?.prefix !== undefined) return
 
-    const textLinks = parseBiliLinks(session.content)
-    const jsonLinks = parseJsonElements(session.elements ?? [])
-    const allLinks = deduplicateLinks([...textLinks, ...jsonLinks])
+    const allLinks = parseBiliLinks(session.content)
     if (allLinks.length === 0) return
 
     const channelKey = `${session.platform}:${session.channelId}`
