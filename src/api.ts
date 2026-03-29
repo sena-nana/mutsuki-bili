@@ -189,7 +189,7 @@ export class BiliApiClient {
       // redirect:manual 下 3xx 会抛出错误，从中提取 Location
       const location = err?.response?.headers?.location
         ?? err?.response?.headers?.get?.('location')
-      if (location) return location
+      if (location) return cleanBiliUrl(location)
     }
     // 回退：GET 请求，解析响应体中的跳转 URL
     try {
@@ -199,8 +199,25 @@ export class BiliApiClient {
       })
       const match = html.match(/content="0;url=(https?:\/\/[^"]+)"/)
         ?? html.match(/window\.location\.href\s*=\s*"(https?:\/\/[^"]+)"/)
-      if (match?.[1]) return match[1]
+      if (match?.[1]) return cleanBiliUrl(match[1])
     } catch {}
     return ''
   }
 }
+
+/** 移除 Bilibili URL 中的跟踪参数 */
+export function cleanBiliUrl(url: string): string {
+  try {
+    const u = new URL(url, 'https://www.bilibili.com')
+    u.searchParams.forEach((_v, k) => {
+      if (!BILI_URL_KEEP_PARAMS.has(k)) u.searchParams.delete(k)
+    })
+    u.hash = ''
+    return u.toString()
+  } catch {
+    return url
+  }
+}
+
+/** 需要保留的 URL 参数白名单（非跟踪用途） */
+const BILI_URL_KEEP_PARAMS = new Set(['p', 't'])

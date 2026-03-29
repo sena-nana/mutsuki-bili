@@ -1,4 +1,5 @@
 import { h } from 'koishi'
+import { cleanBiliUrl } from '../api'
 import { LiveStatus } from '../types'
 import { ContentResolver, type ResolverContext } from './base'
 
@@ -27,7 +28,7 @@ export class UserResolver extends ContentResolver<UserNotification> {
       userName: info.name,
       faceUrl: info.face,
       sign: info.sign ?? '',
-      liveRoomUrl: info.live_room?.url,
+      liveRoomUrl: info.live_room?.url ? cleanBiliUrl(info.live_room.url) : undefined,
       liveStatus: info.live_room
         ? (info.live_room.liveStatus === LiveStatus.LIVE ? '直播中' : '未开播')
         : undefined,

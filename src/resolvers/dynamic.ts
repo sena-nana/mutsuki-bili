@@ -1,4 +1,5 @@
 import { h } from 'koishi'
+import { cleanBiliUrl } from '../api'
 import type { DynamicItem } from '../types'
 import { ContentResolver, type ResolverContext } from './base'
 
@@ -69,7 +70,7 @@ export class DynamicResolver extends ContentResolver<DynamicNotification> {
       dynamicId: item.id_str,
       text: opus?.summary?.text ?? text,
       images: opus?.pics?.map(p => p.url) ?? images,
-      videoLink: archive ? `https:${archive.jump_url}` : undefined,
+      videoLink: archive ? cleanBiliUrl(`https:${archive.jump_url}`) : undefined,
       videoThumb: archive?.cover,
       videoTitle: archive?.title,
     }
