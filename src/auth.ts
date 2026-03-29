@@ -124,7 +124,6 @@ export class AuthManager {
       {
         params: { qrcode_key: qrcodeKey, source: 'main-fe-header' },
         headers: COMMON_HEADERS,
-        responseType: 'arraybuffer',  // 需要读取 set-cookie
       },
     )
     const code: number = resp?.data?.code ?? -1
