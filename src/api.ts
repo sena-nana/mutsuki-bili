@@ -209,9 +209,8 @@ export class BiliApiClient {
 export function cleanBiliUrl(url: string): string {
   try {
     const u = new URL(url, 'https://www.bilibili.com')
-    u.searchParams.forEach((_v, k) => {
-      if (!BILI_URL_KEEP_PARAMS.has(k)) u.searchParams.delete(k)
-    })
+    const keysToRemove = [...u.searchParams.keys()].filter(k => !BILI_URL_KEEP_PARAMS.has(k))
+    for (const k of keysToRemove) u.searchParams.delete(k)
     u.hash = ''
     return u.toString()
   } catch {
