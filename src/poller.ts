@@ -80,6 +80,7 @@ export class PollerManager {
 
   private async dispatch(uid: string, type: 'live' | 'dynamic' | 'video', elements: h[]) {
     if (!elements.length) return
+    await this.api.proxyImages(elements)
 
     const rows = await this.ctx.database.get('bili.admin', { uid, paused: false })
     for (const row of rows) {

@@ -59,6 +59,7 @@ export function registerLinkParser(
           if (realUrl) {
             const elements = await registry.resolveFirst(realUrl, resolverCtx)
             if (elements?.length) {
+              await resolverCtx.api.proxyImages(elements)
               await session.send(elements)
             }
           }
@@ -69,6 +70,7 @@ export function registerLinkParser(
         if (data) {
           const elements = resolver.render(data)
           if (elements.length) {
+            await resolverCtx.api.proxyImages(elements)
             await session.send(elements)
           }
         }

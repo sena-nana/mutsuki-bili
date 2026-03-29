@@ -1,4 +1,4 @@
-import { Context, HTTP, Logger } from 'koishi'
+import { Context, type h, HTTP, Logger } from 'koishi'
 import type { AuthManager } from './auth'
 import { COMMON_HEADERS } from './auth'
 import type { DynamicScraper } from './dynamic-scraper'
@@ -177,6 +177,19 @@ export class BiliApiClient {
     return data.item
   }
 
+  /** 代理消息中的 Bilibili CDN 图片，解决防盗链导致的图片无法显示问题 */
+  async proxyImages(elements: h[]): Promise<void> {
+    for (const el of elements) {
+      if (el.type === 'img' && typeof el.attrs?.src === 'string' && BILI_CDN_RE.test(el.attrs.src)) {
+        try {
+          const data = await this.http.get<ArrayBuffer>(el.attrs.src, { responseType: 'arraybuffer' })
+          const base64 = Buffer.from(data).toString('base64')
+          el.attrs.src = `data:image/jpeg;base64,${base64}`
+        } catch { /* 保留原始 URL 作为回退 */ }
+      }
+    }
+  }
+
   /** 解析 b23.tv 短链接，返回重定向后的实际 URL */
   async resolveShortLink(code: string): Promise<string> {
     try {
@@ -200,7 +213,7 @@ export class BiliApiClient {
       const match = html.match(/content="0;url=(https?:\/\/[^"]+)"/)
         ?? html.match(/window\.location\.href\s*=\s*"(https?:\/\/[^"]+)"/)
       if (match?.[1]) return cleanBiliUrl(match[1])
-    } catch {}
+    } catch { }
     return ''
   }
 }
@@ -220,3 +233,6 @@ export function cleanBiliUrl(url: string): string {
 
 /** 需要保留的 URL 参数白名单（非跟踪用途） */
 const BILI_URL_KEEP_PARAMS = new Set(['p', 't'])
+
+/** 匹配 Bilibili CDN 域名（防盗链） */
+const BILI_CDN_RE = /^https?:\/\/[^/]*(?:hdslb\.com|biliimg\.com)\//
