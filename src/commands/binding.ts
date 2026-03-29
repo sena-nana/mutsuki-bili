@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { type Command, type Context } from 'koishi'
+import type { Command, Context } from 'koishi'
 import type { BiliApiClient } from '../api'
 import { safeGetUserName } from './helpers'
 
@@ -8,7 +8,7 @@ function generateVerifyCode(): string {
 }
 
 export function registerBindingCommands(parent: Command, ctx: Context, api: BiliApiClient) {
-  parent.subcommand('bili.binduid <uid:string>', '绑定你的 B 站账号')
+  parent.subcommand('.binduid <uid:string>', '绑定你的 B 站账号')
     .userFields(['id'])
     .action(async ({ session }, uid) => {
       const koishiUserId = session.user?.id
@@ -38,7 +38,7 @@ export function registerBindingCommands(parent: Command, ctx: Context, api: Bili
       )
     })
 
-  parent.subcommand('bili.verify', '验证 B 站账号绑定')
+  parent.subcommand('.verify', '验证 B 站账号绑定')
     .userFields(['id'])
     .action(async ({ session }) => {
       const koishiUserId = session.user?.id
@@ -72,7 +72,7 @@ export function registerBindingCommands(parent: Command, ctx: Context, api: Bili
       return `验证成功！已绑定 B 站账号「${userName}」(UID ${record.uid})`
     })
 
-  parent.subcommand('bili.unbinduid', '解除 B 站账号绑定')
+  parent.subcommand('.unbinduid', '解除 B 站账号绑定')
     .userFields(['id'])
     .action(async ({ session }) => {
       const koishiUserId = session.user?.id
@@ -85,7 +85,7 @@ export function registerBindingCommands(parent: Command, ctx: Context, api: Bili
       return `已解除 B 站 UID ${record.uid} 的绑定`
     })
 
-  parent.subcommand('bili.myuid', '查看你的 B 站绑定')
+  parent.subcommand('.myuid', '查看你的 B 站绑定')
     .userFields(['id'])
     .action(async ({ session }) => {
       const koishiUserId = session.user?.id

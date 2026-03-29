@@ -1,9 +1,10 @@
-import { type Command, type Context, h } from 'koishi'
+import type { Command, Context } from 'koishi'
+import { h } from 'koishi'
 import type { AuthManager } from '../auth'
 import { checkAuthority } from './helpers'
 
 export function registerLoginCommand(parent: Command, ctx: Context, auth: AuthManager) {
-  parent.subcommand('bili.login', '扫码登录 B 站账号（主人专属）')
+  parent.subcommand('.login', '扫码登录 B 站账号（主人专属）')
     .action(async ({ session }) => {
       if (!await checkAuthority(session, ctx)) return '权限不足'
 

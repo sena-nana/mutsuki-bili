@@ -1,13 +1,13 @@
-import { type Command, type Context } from 'koishi'
+import type { Command, Context } from 'koishi'
 import type { BiliApiClient } from '../api'
 import { checkAuthority, getSessionContext, safeGetUserName } from './helpers'
 
 const ALL_TYPES = 'live,dynamic,video'
 
 export function registerAdminCommands(parent: Command, ctx: Context, api: BiliApiClient) {
-  const admin = parent.subcommand('bili.admin', '管理 UP主 绑定（主人专属）')
+  const admin = parent.subcommand('.admin', '管理 UP主 绑定（主人专属）')
 
-  admin.subcommand('bili.admin.bind <userId:string> <uid:string>', '绑定 UP主 账号（同时订阅推送）')
+  admin.subcommand('.bind <userId:string> <uid:string>', '绑定 UP主 账号（同时订阅推送）')
     .option('types', '-t <types:string> 推送类型，逗号分隔（live/dynamic/video），默认全部', { fallback: ALL_TYPES })
     .action(async ({ session, options }, userId, uid) => {
       if (!await checkAuthority(session, ctx)) return '权限不足'
@@ -34,7 +34,7 @@ export function registerAdminCommands(parent: Command, ctx: Context, api: BiliAp
       return `已绑定 UP主「${name}」(${uid}) → ${normalizedUserId}，推送类型：${typesStr}`
     })
 
-  admin.subcommand('bili.admin.unbind <userId:string>', '解绑 UP主 账号（同时取消订阅）')
+  admin.subcommand('.unbind <userId:string>', '解绑 UP主 账号（同时取消订阅）')
     .action(async ({ session }, userId) => {
       if (!await checkAuthority(session, ctx)) return '权限不足'
       if (!session.guildId) return '该指令只能在群内使用'
@@ -49,7 +49,7 @@ export function registerAdminCommands(parent: Command, ctx: Context, api: BiliAp
       return `已解绑 ${normalizedUserId}（UID ${rows[0].uid}），推送订阅已同步取消`
     })
 
-  admin.subcommand('bili.admin.list', '查看本群所有绑定/订阅')
+  admin.subcommand('.list', '查看本群所有绑定/订阅')
     .action(async ({ session }) => {
       if (!await checkAuthority(session, ctx)) return '权限不足'
       if (!session.guildId) return '该指令只能在群内使用'

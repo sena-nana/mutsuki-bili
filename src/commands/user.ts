@@ -1,11 +1,11 @@
-import { type Command, type Context } from 'koishi'
+import type { Command, Context } from 'koishi'
 import type { BiliApiClient } from '../api'
 import { dynamicItemToNotification } from '../converters'
 import type { MessageFormatter } from '../formatter'
 import { checkAuthority, getBoundUid, getSessionContext } from './helpers'
 
 export function registerUserCommands(parent: Command, ctx: Context, api: BiliApiClient, formatter: MessageFormatter) {
-  parent.subcommand('bili.pause [uid:string]', '暂停当前群的推送')
+  parent.subcommand('.pause [uid:string]', '暂停当前群的推送')
     .userFields(['id'])
     .action(async ({ session }, uid) => {
       if (!session.guildId) return '该指令只能在群内使用'
@@ -18,7 +18,7 @@ export function registerUserCommands(parent: Command, ctx: Context, api: BiliApi
       return `已暂停 UID ${targetUid} 在本群的推送`
     })
 
-  parent.subcommand('bili.resume [uid:string]', '恢复当前群的推送')
+  parent.subcommand('.resume [uid:string]', '恢复当前群的推送')
     .userFields(['id'])
     .action(async ({ session }, uid) => {
       if (!session.guildId) return '该指令只能在群内使用'
@@ -31,7 +31,7 @@ export function registerUserCommands(parent: Command, ctx: Context, api: BiliApi
       return `已恢复 UID ${targetUid} 在本群的推送`
     })
 
-  parent.subcommand('bili.preview [uid:string]', '发送该 UP主 最新动态的测试推送')
+  parent.subcommand('.preview [uid:string]', '发送该 UP主 最新动态的测试推送')
     .userFields(['id'])
     .action(async ({ session }, uid) => {
       if (!session.guildId) return '该指令只能在群内使用'
