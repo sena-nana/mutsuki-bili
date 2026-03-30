@@ -1,6 +1,9 @@
-import { h } from 'koishi'
+import { h, Logger } from 'koishi'
+import { buildCardHeader, buildCoverImage, wrapHtml } from '../renderer/template'
 import type { VideoDetail, VideoItem } from '../types'
 import { ContentResolver, type ResolverContext } from './base'
+
+const logger = new Logger('mutsuki-bili/video')
 
 export interface VideoNotification {
   type: 'video'
@@ -44,6 +47,22 @@ export class VideoResolver extends ContentResolver<VideoNotification> {
       `https://www.bilibili.com/video/${data.bvid}`,
     ))
     return elements
+  }
+
+  async renderImage(data: VideoNotification, ctx: ResolverContext): Promise<h[] | null> {
+    if (!ctx.renderHelper?.available) return null
+    try {
+      const imageMap = await ctx.renderHelper.prefetchImages([data.thumb])
+
+      let body = buildCardHeader('', data.userName, '投稿')
+      body += buildCoverImage(imageMap.get(data.thumb) ?? '')
+      body += `<div class="card-title">${data.title.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</div>`
+      const buf = await ctx.renderHelper.screenshot(wrapHtml(body))
+      return [h.image(buf, 'image/png')]
+    } catch (err) {
+      logger.warn('视频图片渲染失败: %s', String(err))
+      return null
+    }
   }
 
   buildFromDetail(detail: VideoDetail): VideoNotification {

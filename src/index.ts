@@ -7,6 +7,7 @@ import { registerModels } from './db'
 import { DynamicScraper } from './dynamic-scraper'
 import { registerLinkParser } from './link-parser'
 import { PollerManager } from './poller'
+import { RenderHelper } from './renderer/render-helper'
 import type { ResolverContext } from './resolvers/base'
 import { DynamicResolver } from './resolvers/dynamic'
 import { GfItemResolver } from './resolvers/gf-item'
@@ -107,7 +108,6 @@ export function apply(ctx: Context, config: Config) {
   const auth    = new AuthManager(ctx, config)
   const scraper = new DynamicScraper(ctx, auth, config)
   const api     = new BiliApiClient(ctx, auth, config, scraper)
-  const poller  = new PollerManager(ctx, config, api)
 
   // 构建 resolver 注册表
   const registry = new ResolverRegistry()
@@ -120,11 +120,16 @@ export function apply(ctx: Context, config: Config) {
   registry.register(new MhsStallResolver())
   registry.register(new GfItemResolver())
 
+  const renderHelper = new RenderHelper(ctx, ctx.http)
+
   const resolverCtx: ResolverContext = {
     api,
     http: ctx.http,
     puppeteer: (ctx as Context & { puppeteer?: ResolverContext['puppeteer'] }).puppeteer,
+    renderHelper,
   }
+
+  const poller = new PollerManager(ctx, config, api, resolverCtx)
 
   // 将 config.admins 静态预设同步到 bili.admin 表
   ctx.on('ready', async () => {

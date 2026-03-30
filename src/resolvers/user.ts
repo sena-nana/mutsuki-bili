@@ -1,7 +1,10 @@
-import { h } from 'koishi'
+import { h, Logger } from 'koishi'
 import { cleanBiliUrl } from '../api'
+import { buildCardHeader, buildInfoRowHtml, wrapHtml } from '../renderer/template'
 import { LiveStatus } from '../types'
 import { ContentResolver, type ResolverContext } from './base'
+
+const logger = new Logger('mutsuki-bili/user')
 
 export interface UserNotification {
   type: 'user'
@@ -46,5 +49,29 @@ export class UserResolver extends ContentResolver<UserNotification> {
     }
     elements.push(h.text(text))
     return elements
+  }
+
+  async renderImage(data: UserNotification, ctx: ResolverContext): Promise<h[] | null> {
+    if (!ctx.renderHelper?.available) return null
+    try {
+      const imageMap = await ctx.renderHelper.prefetchImages([data.faceUrl].filter(Boolean))
+
+      let body = buildCardHeader(imageMap.get(data.faceUrl) ?? '', data.userName, 'UP主')
+
+      if (data.sign) {
+        body += `<div class="signature">${data.sign.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</div>`
+      }
+
+      if (data.liveStatus) {
+        const statusClass = data.liveStatus === '直播中' ? 'live' : 'offline'
+        body += buildInfoRowHtml('直播', `<span class="status-badge ${statusClass}">${data.liveStatus}</span>`)
+      }
+
+      const buf = await ctx.renderHelper.screenshot(wrapHtml(body))
+      return [h.image(buf, 'image/png')]
+    } catch (err) {
+      logger.warn('用户图片渲染失败: %s', String(err))
+      return null
+    }
   }
 }

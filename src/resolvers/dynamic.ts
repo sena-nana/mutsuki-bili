@@ -1,7 +1,10 @@
-import { h } from 'koishi'
+import { h, Logger } from 'koishi'
 import { cleanBiliUrl } from '../api'
+import { buildCardHeader, buildImageGrid, buildVideoAttach, esc, wrapHtml } from '../renderer/template'
 import type { DynamicItem } from '../types'
 import { ContentResolver, type ResolverContext } from './base'
+
+const logger = new Logger('mutsuki-bili/dynamic')
 
 export interface DynamicNotification {
   type: 'dynamic'
@@ -52,6 +55,37 @@ export class DynamicResolver extends ContentResolver<DynamicNotification> {
     }
 
     return elements
+  }
+
+  async renderImage(data: DynamicNotification, ctx: ResolverContext): Promise<h[] | null> {
+    if (!ctx.renderHelper?.available) return null
+    try {
+      const urls = [data.faceUrl, ...data.images]
+      if (data.videoThumb) urls.push(data.videoThumb)
+      const imageMap = await ctx.renderHelper.prefetchImages(urls)
+
+      let body = buildCardHeader(imageMap.get(data.faceUrl) ?? '', data.userName, '动态')
+
+      if (data.text) {
+        body += `<div class="text-content">${esc(data.text)}</div>`
+      }
+
+      body += buildImageGrid(data.images, imageMap)
+
+      if (data.videoTitle && data.videoThumb) {
+        body += buildVideoAttach(
+          imageMap.get(data.videoThumb) ?? '',
+          data.videoTitle,
+          data.videoLink,
+        )
+      }
+
+      const buf = await ctx.renderHelper.screenshot(wrapHtml(body))
+      return [h.image(buf, 'image/png')]
+    } catch (err) {
+      logger.warn('动态图片渲染失败: %s', String(err))
+      return null
+    }
   }
 
   buildFromItem(item: DynamicItem): DynamicNotification {

@@ -79,7 +79,7 @@ export class AuthManager {
     const query = Object.keys(signed)
       .sort()
       .map(k => {
-        const v = String(signed[k]).replace(/[!'()*]/g, '')
+        const v = String((signed as Record<string, string | number>)[k]).replace(/[!'()*]/g, '')
         return `${encodeURIComponent(k)}=${encodeURIComponent(v)}`
       })
       .join('&')

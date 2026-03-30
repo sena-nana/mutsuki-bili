@@ -1,6 +1,7 @@
 import { type Context, type h, Logger } from 'koishi'
 import { type BiliApiClient, BiliApiError, RateLimitError, RiskControlError } from './api'
 import type { Config } from './index'
+import type { ResolverContext } from './resolvers/base'
 import { DynamicResolver } from './resolvers/dynamic'
 import { LivePushResolver } from './resolvers/live-push'
 import { VideoResolver } from './resolvers/video'
@@ -24,6 +25,7 @@ export class PollerManager {
     private ctx: Context,
     private config: Config,
     private api: BiliApiClient,
+    private resolverCtx: ResolverContext,
   ) {}
 
   start() {
@@ -151,12 +153,16 @@ export class PollerManager {
     if (isLive && !wasLive) {
       const user = { name: userInfo.name, face: userInfo.face, uid }
       const notification = this.livePush.build(liveInfo, user, 'live_start', roomId, newState.startedAt)
-      await this.dispatch(uid, 'live', this.livePush.render(notification))
+      let elements = await this.livePush.renderImage(notification, this.resolverCtx)
+      elements ??= this.livePush.render(notification)
+      await this.dispatch(uid, 'live', elements)
     } else if (!isLive && wasLive) {
       const user = { name: userInfo.name, face: userInfo.face, uid }
       const endInfo = { ...liveInfo, title: cached?.title ?? '', keyframe: cached?.coverUrl ?? '', area_name: cached?.areaName ?? '' }
       const notification = this.livePush.build(endInfo, user, 'live_end', roomId, cached?.startedAt ?? now)
-      await this.dispatch(uid, 'live', this.livePush.render(notification))
+      let elements = await this.livePush.renderImage(notification, this.resolverCtx)
+      elements ??= this.livePush.render(notification)
+      await this.dispatch(uid, 'live', elements)
     }
   }
 
@@ -198,7 +204,9 @@ export class PollerManager {
 
     for (const item of newItems.reverse()) {
       const notification = this.dynamicResolver.buildFromItem(item)
-      await this.dispatch(uid, 'dynamic', this.dynamicResolver.render(notification))
+      let elements = await this.dynamicResolver.renderImage(notification, this.resolverCtx)
+      elements ??= this.dynamicResolver.render(notification)
+      await this.dispatch(uid, 'dynamic', elements)
     }
 
     await this.ctx.database.upsert('bili.dynamic_state', [{
@@ -240,7 +248,9 @@ export class PollerManager {
     for (const video of newVideos.reverse()) {
       const [userCached] = await this.ctx.database.get('bili.user', { uid })
       const notification = this.videoResolver.buildFromItem(video, userCached?.name ?? uid, uid)
-      await this.dispatch(uid, 'video', this.videoResolver.render(notification))
+      let elements = await this.videoResolver.renderImage(notification, this.resolverCtx)
+      elements ??= this.videoResolver.render(notification)
+      await this.dispatch(uid, 'video', elements)
     }
 
     await this.ctx.database.upsert('bili.video_state', [{

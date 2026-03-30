@@ -68,9 +68,12 @@ export function registerLinkParser(
 
         const data = await resolver.fetch(id, resolverCtx)
         if (data) {
-          const elements = resolver.render(data)
-          if (elements.length) {
+          let elements = await resolver.renderImage(data, resolverCtx)
+          if (!elements?.length) {
+            elements = resolver.render(data)
             await resolverCtx.api.proxyImages(elements)
+          }
+          if (elements.length) {
             await session.send(elements)
           }
         }

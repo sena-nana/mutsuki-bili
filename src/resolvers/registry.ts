@@ -44,7 +44,11 @@ export class ResolverRegistry {
       if (resolver.name === 'short') continue
       try {
         const data = await resolver.fetch(id, ctx)
-        if (data) return resolver.render(data)
+        if (data) {
+          const imageResult = await resolver.renderImage(data, ctx)
+          if (imageResult?.length) return imageResult
+          return resolver.render(data)
+        }
       } catch (err) {
         logger.debug('resolver [%s:%s] 失败: %s', resolver.name, id, String(err))
       }

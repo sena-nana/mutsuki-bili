@@ -1,10 +1,12 @@
 import type { Context, HTTP, h } from "koishi";
 import type { BiliApiClient } from "../api";
+import type { RenderHelper } from "../renderer/render-helper";
 
 export interface ResolverContext {
 	api: BiliApiClient;
 	http: HTTP;
 	puppeteer?: Context["puppeteer"];
+	renderHelper?: RenderHelper;
 }
 
 export abstract class ContentResolver<TData = unknown> {
@@ -22,9 +24,14 @@ export abstract class ContentResolver<TData = unknown> {
 		return match[1] ?? match[0];
 	}
 
-	/** 从 ID 获���数据（匹配路径） */
+	/** 从 ID 获取数据（匹配路径） */
 	abstract fetch(id: string, ctx: ResolverContext): Promise<TData | null>;
 
 	/** 渲染为消息元素（两条路径共用） */
 	abstract render(data: TData): h[];
+
+	/** 渲染为截图图片（可选实现，默认返回 null 走文本回退） */
+	async renderImage(_data: TData, _ctx: ResolverContext): Promise<h[] | null> {
+		return null;
+	}
 }

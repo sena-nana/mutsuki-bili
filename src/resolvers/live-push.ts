@@ -1,5 +1,9 @@
-import { h } from 'koishi'
+import { h, Logger } from 'koishi'
+import { buildCardHeader, buildCoverImage, buildInfoRow, wrapHtml } from '../renderer/template'
 import type { LiveRoomInfo } from '../types'
+import type { ResolverContext } from './base'
+
+const logger = new Logger('mutsuki-bili/live-push')
 
 export interface LiveNotification {
   type: 'live_start' | 'live_end'
@@ -47,5 +51,31 @@ export class LivePushResolver {
       `https://live.bilibili.com/${data.roomId}`,
     ))
     return elements
+  }
+
+  async renderImage(data: LiveNotification, ctx: ResolverContext): Promise<h[] | null> {
+    if (!ctx.renderHelper?.available) return null
+    try {
+      const urls = [data.faceUrl, data.coverUrl].filter(Boolean)
+      const imageMap = await ctx.renderHelper.prefetchImages(urls)
+
+      const badge = data.type === 'live_start' ? '开播' : '下播'
+
+      let body = buildCardHeader(imageMap.get(data.faceUrl) ?? '', data.userName, badge)
+
+      if (data.type === 'live_end') {
+        body += `<div class="text-content">${data.userName} 的直播结束了</div>`
+      } else {
+        body += buildCoverImage(imageMap.get(data.coverUrl) ?? '')
+        body += buildInfoRow('标题', data.title)
+        body += buildInfoRow('分区', data.areaName)
+      }
+
+      const buf = await ctx.renderHelper.screenshot(wrapHtml(body))
+      return [h.image(buf, 'image/png')]
+    } catch (err) {
+      logger.warn('直播推送图片渲染失败: %s', String(err))
+      return null
+    }
   }
 }

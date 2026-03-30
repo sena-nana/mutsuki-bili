@@ -1,6 +1,9 @@
-import { h } from 'koishi'
+import { h, Logger } from 'koishi'
+import { buildCoverImage, buildInfoRow, wrapHtml } from '../renderer/template'
 import { LiveStatus } from '../types'
 import { ContentResolver, type ResolverContext } from './base'
+
+const logger = new Logger('mutsuki-bili/live-info')
 
 export interface LiveInfoData {
   roomId: string
@@ -40,5 +43,27 @@ export class LiveInfoResolver extends ContentResolver<LiveInfoData> {
       `https://live.bilibili.com/${data.roomId}`,
     ))
     return elements
+  }
+
+  async renderImage(data: LiveInfoData, ctx: ResolverContext): Promise<h[] | null> {
+    if (!ctx.renderHelper?.available) return null
+    try {
+      const imageMap = await ctx.renderHelper.prefetchImages([data.coverUrl].filter(Boolean))
+
+      const statusClass = data.status === '直播中' ? 'live'
+        : data.status === '轮播中' ? 'replay' : 'offline'
+
+      let body = `<div class="card-header">
+  <div class="user-name">直播间<span class="status-badge ${statusClass}">${data.status}</span></div>
+</div>`
+      body += buildCoverImage(imageMap.get(data.coverUrl) ?? '')
+      body += buildInfoRow('标题', data.title)
+      body += buildInfoRow('分区', data.areaName)
+      const buf = await ctx.renderHelper.screenshot(wrapHtml(body))
+      return [h.image(buf, 'image/png')]
+    } catch (err) {
+      logger.warn('直播间图片渲染失败: %s', String(err))
+      return null
+    }
   }
 }
