@@ -1,5 +1,6 @@
 import { type Context, Logger, type Session } from 'koishi'
 import type { Config } from './index'
+import { expandMessageContentForLinks } from './link-message-content'
 import type { ResolverContext } from './resolvers/base'
 import type { ResolverRegistry } from './resolvers/registry'
 
@@ -44,7 +45,7 @@ export function registerLinkParser(
     if (!session.content) return
     if ((session as Session & { parsed?: { prefix?: string } }).parsed?.prefix !== undefined) return
 
-    const matches = registry.matchAll(session.content)
+    const matches = registry.matchAll(expandMessageContentForLinks(session.content))
     if (matches.length === 0) return
 
     const channelKey = `${session.platform}:${session.channelId}`
