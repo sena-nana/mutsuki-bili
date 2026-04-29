@@ -46,6 +46,15 @@ test('derives dynamic and live links from Bilibili mini program page paths', () 
   match(expanded, /https:\/\/live\.bilibili\.com\/24680/)
 })
 
+test('derives Mihuashi links from mini program page paths', () => {
+  const content = '[CQ:json,data={"app":"com.tencent.miniapp","meta":{"detail_1":{"title":"米画师分享","pagepath":"pages/stalls/detail?id=13579&profile_id=24680"}}}]'
+
+  const expanded = expandMessageContentForLinks(content)
+
+  match(expanded, /https:\/\/www\.mihuashi\.com\/stalls\/13579/)
+  match(expanded, /https:\/\/www\.mihuashi\.com\/profiles\/24680/)
+})
+
 let failed = 0
 for (const { name, fn } of tests) {
   try {

@@ -49,6 +49,7 @@ export function expandMessageContentForLinks(content: string): string {
       add(variant)
       for (const candidate of extractStructuredCandidates(variant)) add(candidate)
       for (const link of deriveBiliLinks(variant)) add(link)
+      for (const link of deriveMihuashiLinks(variant)) add(link)
     }
   }
 
@@ -153,8 +154,45 @@ function deriveBiliLinks(text: string): string[] {
   return [...new Set(links)]
 }
 
+function deriveMihuashiLinks(text: string): string[] {
+  const links: string[] = []
+  if (!hasMihuashiShareContext(text)) return links
+
+  for (const match of text.matchAll(/(?:^|[/?#&])profiles?(?:\/(?:detail\/?)?)?(?:[?#&/]|id=|profile_id=|user_id=)(\d+)/gi)) {
+    links.push(`https://www.mihuashi.com/profiles/${match[1]}`)
+  }
+
+  for (const profileId of collectParamValues(text, ['profile_id', 'profileId', 'user_id', 'userId', 'artist_id', 'artistId'])) {
+    if (/^\d+$/.test(profileId)) links.push(`https://www.mihuashi.com/profiles/${profileId}`)
+  }
+
+  for (const match of text.matchAll(/(?:^|[/?#&])stalls?(?:\/(?:detail\/?)?)?(?:[?#&/]|id=|stall_id=)(\d+)/gi)) {
+    links.push(`https://www.mihuashi.com/stalls/${match[1]}`)
+  }
+
+  for (const stallId of collectParamValues(text, ['stall_id', 'stallId'])) {
+    if (/^\d+$/.test(stallId)) links.push(`https://www.mihuashi.com/stalls/${stallId}`)
+  }
+
+  if (/(?:stalls?|橱窗)/i.test(text)) {
+    for (const id of collectParamValues(text, ['id'])) {
+      if (/^\d+$/.test(id)) links.push(`https://www.mihuashi.com/stalls/${id}`)
+    }
+  } else if (/(?:profiles?|画师|主页|用户)/i.test(text)) {
+    for (const id of collectParamValues(text, ['id'])) {
+      if (/^\d+$/.test(id)) links.push(`https://www.mihuashi.com/profiles/${id}`)
+    }
+  }
+
+  return [...new Set(links)]
+}
+
 function hasBiliShareContext(text: string): boolean {
   return /(?:bilibili|b23\.tv|bili|哔哩|miniapp|qqdocurl|jumpUrl|pagepath|pagePath|pages\/(?:video|opus|dynamic|live|space|user)|bilibili:\/\/)/i.test(text)
+}
+
+function hasMihuashiShareContext(text: string): boolean {
+  return /(?:mihuashi|米画师|mihua|pagepath|pagePath|miniapp|pages\/(?:stalls?|profiles?|artist|user))/i.test(text)
 }
 
 function collectParamValues(text: string, keys: string[]): string[] {
